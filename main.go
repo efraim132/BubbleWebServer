@@ -7,12 +7,14 @@ import (
 	web "BubbleWebServer/WebServer"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -29,11 +31,16 @@ type Tcommand struct {
 }
 
 type (
-	errMsg error
+	errMsg         error
+	screen         string
+	stateChangeMsg screen
 )
 
+var port = -1
+var portString string
+
 type Model struct {
-	state       string
+	state       screen
 	spinner     spinner.Model
 	viewport    viewport.Model
 	messages    []string
@@ -41,6 +48,8 @@ type Model struct {
 	senderStyle lipgloss.Style
 	statusStyle lipgloss.Style
 	systemStyle lipgloss.Style
+	portStyle   lipgloss.Style
+	portForm    *huh.Form
 	err         error
 }
 
@@ -52,7 +61,7 @@ const gap = "\n\n"
 
 func getDebugStatus(m Model) string {
 	if debug {
-		return m.statusStyle.Render("Status:") + " " + m.state + "\n"
+		return m.statusStyle.Render("Status:") + " " + string(m.state) + "\n"
 	} else {
 		return ""
 	}
@@ -74,6 +83,10 @@ func main() {
 	addCommand(Tcommand{
 		function: restartServer,
 		cmd:      "restart server",
+	})
+	addCommand(Tcommand{
+		function: setPort,
+		cmd:      "set port",
 	})
 
 	// BubbleTea Setup ============
@@ -128,7 +141,12 @@ func initialModel() Model {
 		senderStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
 		statusStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("3")),
 		systemStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("1")),
-		err:         nil,
+		portStyle: lipgloss.NewStyle().
+			Padding(1, 2).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("63")),
+		portForm: generateForm(),
+		err:      nil,
 	}
 }
 
@@ -142,8 +160,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		vpCmd tea.Cmd
 	)
 
-	m.textarea, tiCmd = m.textarea.Update(msg)
-	m.viewport, vpCmd = m.viewport.Update(msg)
+	// Handle portSelection state separately - needs to process all input for the form
+	if m.state == "portSelection" {
+		// Update the form with the message
+		form, cmd := m.portForm.Update(msg)
+		if f, ok := form.(*huh.Form); ok {
+			m.portForm = f
+		}
+
+		// Check if form is complete
+		if m.portForm.State == huh.StateCompleted {
+			// Parse the port from portString
+			if parsedPort, err := strconv.Atoi(portString); err == nil {
+				port = parsedPort
+				m.messages = append(m.messages,
+					m.systemStyle.Render(fmt.Sprintf("Port set to %d", port)))
+			} else {
+				m.messages = append(m.messages,
+					m.systemStyle.Render("Error: Invalid port number"))
+			}
+
+			// Return to chatting state
+			m.state = "chatting"
+			m.textarea.Focus()
+			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.messages, "\n")))
+			m.textarea.Reset()
+			m.viewport.GotoBottom()
+
+			// Reset form for next time
+			m.portForm = generateForm()
+		}
+
+		return m, cmd
+	}
+
+	// Only update textarea and viewport if we're in chatting state
+	if m.state == "chatting" {
+		m.textarea, tiCmd = m.textarea.Update(msg)
+		m.viewport, vpCmd = m.viewport.Update(msg)
+	}
 
 	switch msg := msg.(type) {
 	case web.HTTPRequestMsg:
@@ -184,19 +239,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.state = "done"
 				return m, m.spinner.Tick
 			} else if textAreaVal == "/help" { //TODO Migrate this to a command
-				m.messages = append(m.messages, m.systemStyle.Render("/start<or>stop server\n/restart server\n/help to show this page"))
+				m.messages = append(m.messages, m.systemStyle.Render("/start server - Start the web server\n/stop server - Stop the web server\n/restart server - Restart the web server\n/set port - Set the server port\n/help - Show this help message"))
 				textAreaVal = ""
 			} else if textAreaVal == "help" {
 				m.messages = append(m.messages, m.systemStyle.Render("Did you mean /help?"))
 				textAreaVal = ""
 			} else {
+				// For any messages
+				//TODO Add in unknown handling
 				m.messages = append(m.messages, m.senderStyle.Render("You: ")+m.textarea.Value())
 			}
 
 			//Command Handling
 			if strings.HasPrefix(textAreaVal, "/") {
 				textAreaVal = strings.TrimPrefix(textAreaVal, "/")
-				m.messages = append(m.messages, HandleCommand(textAreaVal))
+				result := HandleCommand(textAreaVal)
+
+				// Check if it's a state change command
+				if strings.HasPrefix(result, "STATE_CHANGE:") {
+					newState := strings.TrimPrefix(result, "STATE_CHANGE:")
+					m.state = screen(newState)
+					m.textarea.Blur()
+					return m, m.portForm.Init()
+				}
+
+				m.messages = append(m.messages, result)
 			}
 
 			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.messages, "\n")))
@@ -220,7 +287,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	if m.state == "chatting" {
+	switch m.state {
+	case "chatting":
 		return fmt.Sprintf(
 			"%s%s%s%s",
 			getDebugStatus(m),
@@ -228,7 +296,14 @@ func (m Model) View() string {
 			gap,
 			m.textarea.View(),
 		)
-	} else if m.state == "done" {
+	case "portSelection":
+		return fmt.Sprintf(
+			"%s\n\n%s\n\n%s",
+			getDebugStatus(m),
+			m.portStyle.Render("Set Server Port"),
+			m.portForm.View(),
+		)
+	case "done":
 		return fmt.Sprintf(
 			"%s%sWaiting for you to exit\n%s",
 			getDebugStatus(m),
@@ -250,11 +325,50 @@ func HandleCommand(message string) string {
 	return fmt.Sprintf("\"/%s\" is not a valid command", message)
 }
 
-func startServer(string) string   { return web.StartWebserverGoRoutine() }
+func startServer(string) string {
+	return web.StartWebserverGoRoutine(port)
+}
 func stopServer(string) string    { return web.StopWebserver() }
-func restartServer(string) string { return web.RestartWebserver() }
+func restartServer(string) string { return web.RestartWebserver(port) }
+func setPort(string) string {
+	return "STATE_CHANGE:portSelection"
+}
 
 func addCommand(newCommand Tcommand) error {
 	commands = append(commands, newCommand)
 	return nil
+}
+
+// Form stuff
+func generateForm() *huh.Form {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("HTTP Port").
+				Placeholder("8080").
+				Value(&portString). // Pointer to string variable
+				// Validate function checks if it's a valid port number
+				Validate(func(s string) error {
+					// Check if it can be converted to integer
+					port, err := strconv.Atoi(s)
+					if err != nil {
+						return fmt.Errorf("port must be a number")
+					}
+
+					// Check if port is in valid range (1-65535)
+					if port < 1 || port > 65535 {
+						return fmt.Errorf("port must be between 1 and 65535")
+					}
+
+					// Optionally warn about privileged ports
+					if port < 1024 {
+						return fmt.Errorf("port %d requires admin privileges", port)
+					}
+
+					return nil // Validation passed
+				}),
+		),
+	).WithWidth(60)
+
+	return form
 }

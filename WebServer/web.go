@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const port = 8090
+var port = 8090
 
 // HTTPRequestMsg is sent to the BubbleTea UI when an HTTP request is received
 type HTTPRequestMsg struct {
@@ -72,14 +72,16 @@ func WebInit() error {
 
 }
 
-func StartWebserverGoRoutine() string {
+func StartWebserverGoRoutine(rPort int) string {
 	if isWebServerRunning {
 		return stylizeServerMessage("Webserver is already running!")
 	}
-
+	if rPort != -1 {
+		port = rPort
+	}
 	go main()
 	isWebServerRunning = true
-	return stylizeServerMessage("Started Up Webserver! Listening to port 8090")
+	return stylizeServerMessage(fmt.Sprintf("Started Up Webserver! Listening to port %d", port))
 }
 
 func StopWebserver() string {
@@ -104,12 +106,12 @@ func StopWebserver() string {
 	return stylizeServerMessage("Server reference not found!")
 }
 
-func RestartWebserver() string {
+func RestartWebserver(rPort int) string {
 	if StopWebserver() == "Webserver is not running!" {
 		return stylizeServerMessage("Webserver is already stopped!")
 	}
-	StartWebserverGoRoutine()
-	return stylizeServerMessage("Restarted Webserver!")
+	StartWebserverGoRoutine(rPort) // Use existing port
+	return stylizeServerMessage(fmt.Sprintf("Restarted Webserver on port %d!", port))
 }
 
 func hello(w http.ResponseWriter, req *http.Request) {
