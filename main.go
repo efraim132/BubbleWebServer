@@ -50,6 +50,9 @@ type Model struct {
 	systemStyle lipgloss.Style
 	portStyle   lipgloss.Style
 	portForm    *huh.Form
+	bannerStyle lipgloss.Style
+	width       int
+	height      int
 	err         error
 }
 
@@ -145,8 +148,11 @@ func initialModel() Model {
 			Padding(1, 2).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("63")),
-		portForm: generateForm(),
-		err:      nil,
+		portForm:    generateForm(),
+		bannerStyle: lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "236", Dark: "248"}),
+		width:       30,
+		height:      5,
+		err:         nil,
 	}
 }
 
@@ -213,6 +219,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Width = msg.Width
 		m.textarea.SetWidth(msg.Width)
 		m.viewport.Height = msg.Height - m.textarea.Height() - lipgloss.Height(gap)
+
+		m.width = msg.Width
+		m.height = msg.Height
 
 		if len(m.messages) > 0 {
 			// Wrap content before setting it.
@@ -297,12 +306,20 @@ func (m Model) View() string {
 			m.textarea.View(),
 		)
 	case "portSelection":
-		return fmt.Sprintf(
+		doc := fmt.Sprintf(
 			"%s\n\n%s\n\n%s",
 			getDebugStatus(m),
 			m.portStyle.Render("Set Server Port"),
 			m.portForm.View(),
 		)
+		centered := lipgloss.Place(
+			m.width,
+			m.height,
+			lipgloss.Center,
+			lipgloss.Center,
+			doc,
+		)
+		return centered
 	case "done":
 		return fmt.Sprintf(
 			"%s%sWaiting for you to exit\n%s",
