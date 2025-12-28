@@ -1,391 +1,187 @@
 package main
 
-// A simple program demonstrating the text area component from the Bubbles
-// component library.
+// BubbleWebServer with TUI ================================================================================================
+// This is the main TUI application for BubbleWebServer
+// It demonstrates how to use the server package with the built-in Terminal User Interface
+//
+// The TUI provides a graphical interface in your terminal for:
+//   - Starting/stopping the server
+//   - Viewing HTTP requests in real-time
+//   - Controlling the server with commands
+//
+// To run: go run main.go
 
 import (
-	web "BubbleWebServer/WebServer"
+	"BubbleWebServer/server"
 	"fmt"
 	"log"
-	"strconv"
-	"strings"
-
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
+	"net/http"
 )
 
-// TODO: Move over to better spot
-var serverStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+// Custom Banner ==========================================================================================================
+// You can customize the banner shown in the TUI
 
-const banner = " /$$      /$$           /$$       /$$$$$$$            /$$       /$$       /$$                    \n| $$  /$ | $$          | $$      | $$__  $$          | $$      | $$      | $$                    \n| $$ /$$$| $$  /$$$$$$ | $$$$$$$ | $$  \\ $$ /$$   /$$| $$$$$$$ | $$$$$$$ | $$  /$$$$$$   /$$$$$$$\n| $$/$$ $$ $$ /$$__  $$| $$__  $$| $$$$$$$ | $$  | $$| $$__  $$| $$__  $$| $$ /$$__  $$ /$$_____/\n| $$$$_  $$$$| $$$$$$$$| $$  \\ $$| $$__  $$| $$  | $$| $$  \\ $$| $$  \\ $$| $$| $$$$$$$$|  $$$$$$ \n| $$$/ \\  $$$| $$_____/| $$  | $$| $$  \\ $$| $$  | $$| $$  | $$| $$  | $$| $$| $$_____/ \\____  $$\n| $$/   \\  $$|  $$$$$$$| $$$$$$$/| $$$$$$$/|  $$$$$$/| $$$$$$$/| $$$$$$$/| $$|  $$$$$$$ /$$$$$$$/\n|__/     \\__/ \\_______/|_______/ |_______/  \\______/ |_______/ |_______/ |__/ \\_______/|_______/ \n                                                                                                 \n                                                                                                 \n                                                                                                 \n"
+const customBanner = ` /$$      /$$           /$$       /$$$$$$$            /$$       /$$       /$$
+| $$  /$ | $$          | $$      | $$__  $$          | $$      | $$      | $$
+| $$ /$$$| $$  /$$$$$$ | $$$$$$$ | $$  \\ $$ /$$   /$$| $$$$$$$ | $$$$$$$ | $$  /$$$$$$   /$$$$$$$
+| $$/$$ $$ $$ /$$__  $$| $$__  $$| $$$$$$$ | $$  | $$| $$__  $$| $$__  $$| $$ /$$__  $$ /$$_____/
+| $$$$_  $$$$| $$$$$$$$| $$  \\ $$| $$__  $$| $$  | $$| $$  \\ $$| $$  \\ $$| $$| $$$$$$$$|  $$$$$$
+| $$$/ \\  $$$| $$_____/| $$  | $$| $$  \\ $$| $$  | $$| $$  | $$| $$  | $$| $$| $$_____/ \\____  $$
+| $$/   \\  $$|  $$$$$$$| $$$$$$$/| $$$$$$$/|  $$$$$$/| $$$$$$$/| $$$$$$$/| $$|  $$$$$$$ /$$$$$$$/
+|__/     \\__/ \\_______/|_______/ |_______/  \\______/ |_______/ |_______/ |__/ \\_______/|_______/
+`
 
-const debug = true
-
-type Tcommand struct {
-	function func(string) string
-	cmd      string
-}
-
-type (
-	errMsg         error
-	screen         string
-	stateChangeMsg screen
-)
-
-var port = -1
-var portString string
-
-type Model struct {
-	state       screen
-	spinner     spinner.Model
-	viewport    viewport.Model
-	messages    []string
-	textarea    textarea.Model
-	senderStyle lipgloss.Style
-	statusStyle lipgloss.Style
-	systemStyle lipgloss.Style
-	portStyle   lipgloss.Style
-	portForm    *huh.Form
-	bannerStyle lipgloss.Style
-	width       int
-	height      int
-	err         error
-}
-
-var commands = []Tcommand{}
-
-const gap = "\n\n"
-
-// Utility =============================================================================================================
-
-func getDebugStatus(m Model) string {
-	if debug {
-		return m.statusStyle.Render("Status:") + " " + string(m.state) + "\n"
-	} else {
-		return ""
-	}
-
-}
-
-// BubbleTea ===========================================================================================================
+// Main Function ===========================================================================================================
 
 func main() {
-	//Commands Setup
-	addCommand(Tcommand{
-		function: startServer,
-		cmd:      "start server",
+	// Configure the TUI
+	// You can customize the banner, title, colors, etc.
+	tuiConfig := server.DefaultTUIConfig()
+	tuiConfig.Banner = customBanner              // Use our custom banner
+	tuiConfig.Title = "WebBubbles Control Panel" // Custom title
+	tuiConfig.ShowDebug = false                  // Set to true to see debug info
+
+	// Create and configure the server
+	// Add your routes here - these are the endpoints your server will respond to
+	srv := server.New().
+		Port(8090).                             // Server will run on port 8090
+		Route("/hello", helloHandler).          // GET http://localhost:8090/hello
+		Route("/header", headersHandler).       // GET http://localhost:8090/header
+		Route("/api/status", apiStatusHandler). // GET http://localhost:8090/api/status
+		Build()
+
+	// Start the server with TUI
+	// This will:
+	//   1. Launch the Terminal User Interface
+	//   2. Show the control panel
+	//   3. Let you start/stop the server with commands
+	//   4. Display incoming HTTP requests in real-time
+	//
+	// The TUI blocks here until you type 'quit'
+	if err := srv.StartWithTUIConfig(tuiConfig); err != nil {
+		log.Fatalf("TUI error: %v", err)
+	}
+
+	// When the TUI exits (user typed 'quit'), the program ends
+	fmt.Println("Server shut down successfully!")
+}
+
+// HTTP Handlers ===========================================================================================================
+// These are the functions that handle requests to different URLs
+
+// helloHandler handles requests to /hello
+// This demonstrates a simple text response
+//
+// Try it: http://localhost:8090/hello
+func helloHandler(w http.ResponseWriter, r *http.Request) error {
+	return server.Text(w, 200, "hello\n")
+}
+
+// headersHandler handles requests to /header
+// This demonstrates reading and returning HTTP headers
+//
+// Try it: http://localhost:8090/header
+func headersHandler(w http.ResponseWriter, r *http.Request) error {
+	// Build a string with all the request headers
+	headers := ""
+	for name, values := range r.Header {
+		for _, h := range values {
+			headers += fmt.Sprintf("%v: %v\n", name, h)
+		}
+	}
+	return server.Text(w, 200, headers)
+}
+
+// apiStatusHandler handles requests to /api/status
+// This demonstrates a JSON API response
+//
+// Try it: http://localhost:8090/api/status
+func apiStatusHandler(w http.ResponseWriter, r *http.Request) error {
+	return server.JSON(w, 200, map[string]interface{}{
+		"status":  "running",
+		"version": "0.1A",
+		"message": "Server is healthy",
 	})
-	addCommand(Tcommand{
-		function: stopServer,
-		cmd:      "stop server",
-	})
-	addCommand(Tcommand{
-		function: restartServer,
-		cmd:      "restart server",
-	})
-	addCommand(Tcommand{
-		function: setPort,
-		cmd:      "set port",
-	})
-
-	// BubbleTea Setup ============
-	f, err := tea.LogToFile("debug.log", "debug")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-
-	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
-
-	//Web setup
-	err = web.WebInit()
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Pass the program to the web server so it can send events
-	web.SetProgram(p)
-
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
-	}
 }
 
-func initialModel() Model {
-	ta := textarea.New()
-	ta.Placeholder = "Enter Command . . ."
-	ta.Focus()
+// How to Use the TUI ======================================================================================================
+//
+// When you run this program, you'll see a terminal interface with:
+//   - The banner at the top
+//   - A message area showing server activity
+//   - A command prompt at the bottom (>)
+//
+// Commands you can type:
+//   /start   - Start the HTTP server
+//   /stop    - Stop the HTTP server
+//   /restart - Restart the HTTP server
+//   /status  - Show server status
+//   /help    - Show help message
+//   quit     - Exit the program
+//
+// Workflow:
+//   1. Run the program: go run main.go
+//   2. Type: /start
+//   3. The server starts and you'll see "Server: Started on port 8090"
+//   4. Open your browser and visit http://localhost:8090/hello
+//   5. You'll see the request appear in the TUI in real-time!
+//   6. Type: /stop to stop the server
+//   7. Type: quit to exit
+//
+// What You'll See:
+//   - When you start the server: "Server: Started on port 8090"
+//   - When requests come in: "Server: Received GET request to /hello from 127.0.0.1:xxxxx"
+//   - When you stop the server: "Server: Stopped"
+//
+// The TUI automatically shows all HTTP requests in real-time with color-coded messages!
 
-	ta.Prompt = "> "
-	ta.CharLimit = 280
+// Adding More Routes ======================================================================================================
+//
+// To add more endpoints to your server, just add more Route() calls in main():
+//
+// Example:
+//   srv := server.New().
+//       Port(8090).
+//       Route("/hello", helloHandler).
+//       Route("/goodbye", goodbyeHandler).      // New route!
+//       Route("/api/users", listUsersHandler).  // New route!
+//       Build()
+//
+// Then create the handler functions:
+//
+//   func goodbyeHandler(w http.ResponseWriter, r *http.Request) error {
+//       return server.Text(w, 200, "Goodbye!\n")
+//   }
+//
+//   func listUsersHandler(w http.ResponseWriter, r *http.Request) error {
+//       users := []string{"Alice", "Bob", "Charlie"}
+//       return server.JSON(w, 200, map[string]interface{}{
+//           "users": users,
+//           "count": len(users),
+//       })
+//   }
+//
+// That's it! The TUI will automatically show requests to your new endpoints.
 
-	ta.SetWidth(30)
-	ta.SetHeight(1)
-
-	// Remove cursor line styling
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
-
-	ta.ShowLineNumbers = false
-
-	vp := viewport.New(30, 5)
-	vp.SetContent(banner + "Written by Efraim v0.1A" + gap + "Welcome to the control panel! \nType a message and press Enter to send.\n\"/start<or>stop server\"")
-
-	ta.KeyMap.InsertNewline.SetEnabled(false)
-
-	return Model{
-		state:       "chatting",
-		spinner:     spinner.New(spinner.WithSpinner(spinner.Dot)),
-		textarea:    ta,
-		messages:    []string{},
-		viewport:    vp,
-		senderStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
-		statusStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("3")),
-		systemStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("1")),
-		portStyle: lipgloss.NewStyle().
-			Padding(1, 2).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("63")),
-		portForm:    generateForm(),
-		bannerStyle: lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "236", Dark: "248"}),
-		width:       30,
-		height:      5,
-		err:         nil,
-	}
-}
-
-func (m Model) Init() tea.Cmd {
-	return textarea.Blink
-}
-
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var (
-		tiCmd tea.Cmd
-		vpCmd tea.Cmd
-	)
-
-	// Handle portSelection state separately - needs to process all input for the form
-	if m.state == "portSelection" {
-		// Update the form with the message
-		form, cmd := m.portForm.Update(msg)
-		if f, ok := form.(*huh.Form); ok {
-			m.portForm = f
-		}
-
-		// Check if form is complete
-		if m.portForm.State == huh.StateCompleted {
-			// Parse the port from portString
-			if parsedPort, err := strconv.Atoi(portString); err == nil {
-				port = parsedPort
-				m.messages = append(m.messages,
-					m.systemStyle.Render(fmt.Sprintf("Port set to %d", port)))
-			} else {
-				m.messages = append(m.messages,
-					m.systemStyle.Render("Error: Invalid port number"))
-			}
-
-			// Return to chatting state
-			m.state = "chatting"
-			m.textarea.Focus()
-			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.messages, "\n")))
-			m.textarea.Reset()
-			m.viewport.GotoBottom()
-
-			// Reset form for next time
-			m.portForm = generateForm()
-		}
-
-		return m, cmd
-	}
-
-	// Only update textarea and viewport if we're in chatting state
-	if m.state == "chatting" {
-		m.textarea, tiCmd = m.textarea.Update(msg)
-		m.viewport, vpCmd = m.viewport.Update(msg)
-	}
-
-	switch msg := msg.(type) {
-	case web.HTTPRequestMsg:
-		// Handle HTTP request events from the web server
-		m.messages = append(m.messages,
-			serverStyle.Render("Server: ")+
-				fmt.Sprintf("Received %s request to %s", msg.Method, msg.Path))
-		m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.messages, "\n")))
-		m.viewport.GotoBottom()
-
-	case tea.WindowSizeMsg:
-		m.viewport.Width = msg.Width
-		m.textarea.SetWidth(msg.Width)
-		m.viewport.Height = msg.Height - m.textarea.Height() - lipgloss.Height(gap)
-
-		m.width = msg.Width
-		m.height = msg.Height
-
-		if len(m.messages) > 0 {
-			// Wrap content before setting it.
-			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.messages, "\n")))
-		}
-		m.viewport.GotoBottom()
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
-			if m.state != "done" {
-				m.messages = append(m.messages, m.systemStyle.Render("Please type \"done\" to quit"))
-				m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.messages, "\n")))
-				m.textarea.Reset()
-				m.viewport.GotoBottom()
-			} else {
-				fmt.Println(m.textarea.Value())
-				return m, tea.Quit
-			}
-
-		case tea.KeyEnter:
-			var textAreaVal = m.textarea.Value()
-
-			if textAreaVal == "done" {
-				m.state = "done"
-				return m, m.spinner.Tick
-			} else if textAreaVal == "/help" { //TODO Migrate this to a command
-				m.messages = append(m.messages, m.systemStyle.Render("/start server - Start the web server\n/stop server - Stop the web server\n/restart server - Restart the web server\n/set port - Set the server port\n/help - Show this help message"))
-				textAreaVal = ""
-			} else if textAreaVal == "help" {
-				m.messages = append(m.messages, m.systemStyle.Render("Did you mean /help?"))
-				textAreaVal = ""
-			} else {
-				// For any messages
-				//TODO Add in unknown handling
-				m.messages = append(m.messages, m.senderStyle.Render("You: ")+m.textarea.Value())
-			}
-
-			//Command Handling
-			if strings.HasPrefix(textAreaVal, "/") {
-				textAreaVal = strings.TrimPrefix(textAreaVal, "/")
-				result := HandleCommand(textAreaVal)
-
-				// Check if it's a state change command
-				if strings.HasPrefix(result, "STATE_CHANGE:") {
-					newState := strings.TrimPrefix(result, "STATE_CHANGE:")
-					m.state = screen(newState)
-					m.textarea.Blur()
-					return m, m.portForm.Init()
-				}
-
-				m.messages = append(m.messages, result)
-			}
-
-			m.viewport.SetContent(lipgloss.NewStyle().Width(m.viewport.Width).Render(strings.Join(m.messages, "\n")))
-			m.textarea.Reset()
-			m.viewport.GotoBottom()
-		}
-
-	// We handle errors just like any other message
-	case errMsg:
-		m.err = msg
-		return m, nil
-
-	default:
-		if m.state == "done" {
-			var cmd tea.Cmd
-			m.spinner, cmd = m.spinner.Update(msg)
-			return m, cmd
-		}
-	}
-	return m, tea.Batch(tiCmd, vpCmd)
-}
-
-func (m Model) View() string {
-	switch m.state {
-	case "chatting":
-		return fmt.Sprintf(
-			"%s%s%s%s",
-			getDebugStatus(m),
-			m.viewport.View(),
-			gap,
-			m.textarea.View(),
-		)
-	case "portSelection":
-		doc := fmt.Sprintf(
-			"%s\n\n%s\n\n%s",
-			getDebugStatus(m),
-			m.portStyle.Render("Set Server Port"),
-			m.portForm.View(),
-		)
-		centered := lipgloss.Place(
-			m.width,
-			m.height,
-			lipgloss.Center,
-			lipgloss.Center,
-			doc,
-		)
-		return centered
-	case "done":
-		return fmt.Sprintf(
-			"%s%sWaiting for you to exit\n%s",
-			getDebugStatus(m),
-			m.spinner.View(),
-			"Thank you! Press Ctrl+C or Esc to exit.",
-		)
-	}
-	return "Unknown state"
-}
-
-// Command Handling ====================================================================================================
-
-func HandleCommand(message string) string {
-	for _, command := range commands {
-		if message == command.cmd {
-			return command.function(message)
-		}
-	}
-	return fmt.Sprintf("\"/%s\" is not a valid command", message)
-}
-
-func startServer(string) string {
-	return web.StartWebserverGoRoutine(port)
-}
-func stopServer(string) string    { return web.StopWebserver() }
-func restartServer(string) string { return web.RestartWebserver(port) }
-func setPort(string) string {
-	return "STATE_CHANGE:portSelection"
-}
-
-func addCommand(newCommand Tcommand) error {
-	commands = append(commands, newCommand)
-	return nil
-}
-
-// Form stuff
-func generateForm() *huh.Form {
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Title("HTTP Port").
-				Placeholder("8080").
-				Value(&portString). // Pointer to string variable
-				// Validate function checks if it's a valid port number
-				Validate(func(s string) error {
-					// Check if it can be converted to integer
-					port, err := strconv.Atoi(s)
-					if err != nil {
-						return fmt.Errorf("port must be a number")
-					}
-
-					// Check if port is in valid range (1-65535)
-					if port < 1 || port > 65535 {
-						return fmt.Errorf("port must be between 1 and 65535")
-					}
-
-					// Optionally warn about privileged ports
-					if port < 1024 {
-						return fmt.Errorf("port %d requires admin privileges", port)
-					}
-
-					return nil // Validation passed
-				}),
-		),
-	).WithWidth(60)
-
-	return form
-}
+// Using This in New Projects ==============================================================================================
+//
+// To use this TUI server in a new project:
+//
+// 1. Import the server package:
+//    import "BubbleWebServer/server"
+//
+// 2. Create your server with routes:
+//    srv := server.New().
+//        Port(8080).
+//        Route("/myendpoint", myHandler).
+//        Build()
+//
+// 3. Start with TUI:
+//    srv.StartWithTUI()
+//
+// That's all you need! You get a full terminal UI for monitoring and controlling your server.
+//
+// If you want to run WITHOUT the TUI (for example, in production or as a background service):
+//    srv.Start()  // Regular start without TUI
+//
+// The choice is yours - same server code, with or without the TUI!
