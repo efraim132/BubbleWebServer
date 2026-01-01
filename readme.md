@@ -15,16 +15,17 @@ A production-ready, developer-friendly HTTP server package for Go with an option
 
 ## Features
 
-### 🚀 Phase 1 - Core Functionality (Complete!)
-- ✅ **Fluent API** - Chain methods for clean, readable configuration
-- ✅ **Response Helpers** - One-line JSON, HTML, Text, and Error responses
-- ✅ **Error Handling** - Return errors from handlers, automatic conversion to HTTP responses
-- ✅ **Importable Package** - Use in any project, zero dependencies on TUI
-- ✅ **Terminal UI (Optional)** - Beautiful TUI for development with real-time request monitoring
-- ✅ **Comprehensive Tests** - Full test coverage for reliability
-- ✅ **Detailed Documentation** - Every file heavily commented for learning
+FeaturesPhase 1 - Core Functionality (Complete)
 
-### 🎯 What Makes This Different
+- Fluent API - Chain methods for clean, readable configuration
+- Response Helpers - One-line JSON, HTML, Text, and Error responses
+- Error Handling - Return errors from handlers, automatic conversion to HTTP responses
+- Importable Package - Use in any project, zero dependencies on TUI
+- Terminal UI (Optional) - Beautiful TUI for development with real-time request monitoring
+- Comprehensive Tests - Full test coverage for reliability
+- Detailed Documentation - Every file heavily commented for learning
+
+### What Makes This Different
 
 Unlike other Go web frameworks, BubbleWebServer is designed specifically for:
 - **Rapid prototyping** - Get a server running in 3 lines of code
@@ -350,30 +351,6 @@ cd examples/simple
 go run main.go
 ```
 
-## Roadmap
-
-### Phase 1: Core Functionality ✅ (COMPLETE)
-- [x] Fluent API
-- [x] Response helpers
-- [x] Error handling
-- [x] TUI integration
-- [x] Comprehensive tests
-- [x] Documentation
-
-### Phase 2: Advanced Features (Future)
-- [ ] Middleware system (CORS, logging, recovery, rate limiting)
-- [ ] Configuration files (YAML/JSON)
-- [ ] Route groups and path parameters
-- [ ] Request validation
-- [ ] Static file serving
-- [ ] Template support
-- [ ] Testing utilities
-
-### Phase 3: Developer Experience (Future)
-- [ ] Hot reload
-- [ ] Request/response logging
-- [ ] Metrics and monitoring
-- [ ] OpenAPI/Swagger generation
 
 ## Contributing
 
@@ -387,6 +364,3 @@ This project is provided as-is for educational and personal use.
 
 Created by Efraim - Version 0.1A
 
----
-
-**Made with ❤️ for developers who want to ship fast without sacrificing quality**
