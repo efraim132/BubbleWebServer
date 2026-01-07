@@ -78,12 +78,12 @@ func main() {
 <!-- 📸 SCREENSHOT 1: TUI Main Interface -->
 <!-- Show the TUI running with the banner, command prompt, and maybe one or two request logs -->
 <!-- Suggested filename: assets/tui-main-screen.png -->
-![TUI Main Screen](assets/tui-main-screen.png)
+![TUI Main Screen](tui-main-screen.png)
 
 <!-- 📸 SCREENSHOT 2: Port Selection Form -->
 <!-- Show the centered port selection form with the rounded border -->
 <!-- Suggested filename: assets/tui-port-selection.png -->
-![Port Selection Form](assets/tui-port-selection.png)
+![Port Selection Form](tui-port-selection.png)
 
 ## Core Concepts
 
