@@ -4,7 +4,7 @@ package main
 // component library.
 
 import (
-	web "BubbleWebServer/WebServer"
+	web "BubbleWebServer/webserver"
 	"fmt"
 	"log"
 	"strconv"
