@@ -5,7 +5,7 @@ package examples
 
 import (
 	"fmt"
-	"github.com/efrai/BubbleWebServer/bubbleserver"
+	"github.com/efraim132/BubbleWebServer/bubbleserver"
 	"log"
 	"net/http"
 )
