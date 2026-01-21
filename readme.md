@@ -11,13 +11,13 @@ This repository exposes a `bubbleserver` package that provides a BubbleTea-based
 
    ```bash
    # install the bubbleserver package
-   go get github.com/efrai/BubbleWebServer/bubbleserver
+   go get github.com/efraim132/BubbleWebServer/bubbleserver
    ```
 
 3. See `example_main.go` for a full usage example. Example imports:
 
    ```go
-   import "github.com/efrai/BubbleWebServer/bubbleserver"
+   import "github.com/efraim132/BubbleWebServer/bubbleserver"
    ```
 
 ## Running locally
