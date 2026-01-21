@@ -25,7 +25,13 @@ This repository exposes a `bubbleserver` package that provides a BubbleTea-based
 - For quick testing run `go run main.go` from the repo root. This runs the local TUI + bundled webserver.
 - Default webserver port is 8090; use `/set port` in the TUI or call `server.SetDefaultPort(...)` in code.
 
-## Notes
+## Screenshots
 
-- After pushing this repo to GitHub under `github.com/efrai/BubbleWebServer`, others can import `github.com/efrai/BubbleWebServer/bubbleserver`.
-- If you want a different module path, update `go.mod` and the import paths accordingly.
+TUI main screen:
+
+![TUI Main Screen](assets/tui-main-screen.png)
+
+Port selection form:
+
+![TUI Port Selection](assets/tui-port-selection.png)
+
