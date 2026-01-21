@@ -7,7 +7,6 @@ This repository exposes a `bubbleserver` package that provides a BubbleTea-based
 ## Quick start
 
 1. Ensure Go is installed (Go 1.25+ recommended).
-2. Get the package (replace username if you host under a different account):
 
    ```bash
    # install the bubbleserver package
