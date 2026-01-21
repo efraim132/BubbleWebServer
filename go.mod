@@ -1,4 +1,4 @@
-module github.com/efrai/BubbleWebServer
+module github.com/efraim132/BubbleWebServer
 
 go 1.25
 
