@@ -14,7 +14,7 @@ A simple, importable Go package that combines a BubbleTea TUI with an HTTP web s
 ## Installation
 
 ```bash
-# Replace username if you host under a different account
+
 go get github.com/efraim132/BubbleWebServer/bubbleserver
 ```
 
@@ -24,7 +24,7 @@ go get github.com/efraim132/BubbleWebServer/bubbleserver
 package main
 
 import (
-    "github.com/efrai/BubbleWebServer/bubbleserver"
+    "github.com/efraim132/BubbleWebServer/bubbleserver"
     "fmt"
     "log"
     "net/http"
