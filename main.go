@@ -4,8 +4,8 @@ package main
 // component library.
 
 import (
-	web "BubbleWebServer/webserver"
 	"fmt"
+	web "github.com/efrai/BubbleWebServer/bubbleserver"
 	"log"
 	"strconv"
 	"strings"
@@ -31,9 +31,8 @@ type Tcommand struct {
 }
 
 type (
-	errMsg         error
-	screen         string
-	stateChangeMsg screen
+	errMsg error
+	screen string
 )
 
 var port = -1
@@ -97,7 +96,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 
@@ -351,9 +350,8 @@ func setPort(string) string {
 	return "STATE_CHANGE:portSelection"
 }
 
-func addCommand(newCommand Tcommand) error {
+func addCommand(newCommand Tcommand) {
 	commands = append(commands, newCommand)
-	return nil
 }
 
 // Form stuff

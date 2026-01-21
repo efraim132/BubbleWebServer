@@ -1,10 +1,31 @@
-# GoLang Webserver with Bubbles TUI
-The goal of this project is to simply provide a simple TUI to future webserver projects.
-Ensure new web requests are registered with the `Webserver` package
+# BubbleWebServer
 
-## How to setup
-1) Ensure GO SDK is installed
-2) Clone repository
-3) (For Testing) run `go run main.go`
-- The default port is set to `8090` however this can be changed with the `/set port` command
-- `/help` will show you the usage for all commands
+Go TUI + simple HTTP server packaged as an importable module.
+
+This repository exposes a `bubbleserver` package that provides a BubbleTea-based TUI to manage a small HTTP server and register routes.
+
+## Quick start
+
+1. Ensure Go is installed (Go 1.25+ recommended).
+2. Get the package (replace username if you host under a different account):
+
+   ```bash
+   # install the bubbleserver package
+   go get github.com/efrai/BubbleWebServer/bubbleserver
+   ```
+
+3. See `example_main.go` for a full usage example. Example imports:
+
+   ```go
+   import "github.com/efrai/BubbleWebServer/bubbleserver"
+   ```
+
+## Running locally
+
+- For quick testing run `go run main.go` from the repo root. This runs the local TUI + bundled webserver.
+- Default webserver port is 8090; use `/set port` in the TUI or call `server.SetDefaultPort(...)` in code.
+
+## Notes
+
+- After pushing this repo to GitHub under `github.com/efrai/BubbleWebServer`, others can import `github.com/efrai/BubbleWebServer/bubbleserver`.
+- If you want a different module path, update `go.mod` and the import paths accordingly.
